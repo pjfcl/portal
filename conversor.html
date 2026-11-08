@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversor WordPress XML para Markdown — Paulo Lopes</title>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cardo:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap">
+    <style>
+        :root {
+            --bg-color: #fcfbf9;
+            --text-color: #0f1e2d;
+            --accent-color: #8c2d19;
+            --muted-color: #5c6b73;
+            --border-color: #d8d3cd;
+            --card-bg: #ffffff;
+            --font-serif: "Cardo", Georgia, serif;
+            --font-sans: Inter, sans-serif;
+            --font-mono: 'IBM Plex Mono', monospace;
+        }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-serif);
+            line-height: 1.7;
+            padding: 40px 20px;
+        }
+        .container { max-width: 800px; margin: 0 auto; background: var(--card-bg); padding: 40px; border: 1px solid var(--border-color); border-top: 4px solid var(--accent-color); }
+        h1 { font-family: var(--font-sans); font-size: 1.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-top: 0; }
+        p, label { font-family: var(--font-sans); font-size: 0.95rem; color: var(--muted-color); }
+        .btn-custom { background-color: var(--text-color); color: white; font-family: var(--font-sans); font-weight: 600; text-transform: uppercase; padding: 12px 24px; border: none; cursor: pointer; transition: background 0.2s; }
+        .btn-custom:hover { background-color: var(--accent-color); }
+        pre { background: #121820; color: #e2e8f0; padding: 15px; font-family: var(--font-mono); font-size: 0.85rem; max-height: 300px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Conversor WXR &rarr; Markdown</h1>
+        <p>Carrega o ficheiro de exportação XML do WordPress. A ferramenta processa localmente os artigos e converte-os em blocos de texto limpos para o teu arquivo ou ecossistema estático.</p>
+
+        <div class="w3-margin-top w3-margin-bottom">
+            <label for="xmlFile" style="display:block; margin-bottom: 8px; font-weight: 600; color: var(--text-color);">Selecionar Ficheiro XML (.xml):</label>
+            <input type="file" id="xmlFile" accept=".xml" class="w3-input w3-border" style="font-family: var(--font-sans);">
+        </div>
+
+        <button onclick="processarXML()" class="btn-custom w3-margin-top">Converter para Markdown</button>
+
+        <div id="status" class="w3-margin-top" style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--accent-color);"></div>
+
+        <div class="w3-margin-top">
+            <label style="display:block; margin-bottom: 8px; font-weight: 600; color: var(--text-color);">Resultado Consolidado:</label>
+            <pre id="output">Aguardando ficheiro...</pre>
+        </div>
+    </div>
+
+    <script>
+        function processarXML() {
+            const fileInput = document.getElementById('xmlFile');
+            const statusDiv = document.getElementById('status');
+            const outputPre = document.getElementById('output');
+
+            if (!fileInput.files.length) {
+                alert('Por favor, seleciona primeiro um ficheiro XML do WordPress.');
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+
+            statusDiv.innerText = 'A ler o ficheiro XML...';
+
+            reader.onload = function(e) {
+                try {
+                    const parser = new DOMParser();
+                    const xmlDoc = parser.parseFromString(e.target.result, "text/xml");
+                    
+                    const items = xmlDoc.getElementsByTagName('item');
+                    let markdownTotal = '';
+                    let count = 0;
+
+                    for (let i = 0; i < items.length; i++) {
+                        const item = items[i];
+                        const postType = item.getElementsByTagName('wp:post_type')[0]?.textContent;
+                        
+                        // Apenas posts publicados
+                        if (postType === 'post') {
+                            const title = item.getElementsByTagName('title')[0]?.textContent || 'Sem Título';
+                            const date = item.getElementsByTagName('wp:post_date')[0]?.textContent || '';
+                            const content = item.getElementsByTagName('content:encoded')[0]?.textContent || '';
+                            const slug = item.getElementsByTagName('wp:post_name')[0]?.textContent || 'post';
+
+                            // Limpeza básica de HTML para Markdown essenciais
+                            let cleanContent = content
+                                .replace(/<h1>/g, '# ').replace(/<\/h1>/g, '\n')
+                                .replace(/<h2>/g, '## ').replace(/<\/h2>/g, '\n')
+                                .replace(/<h3>/g, '### ').replace(/<\/h3>/g, '\n')
+                                .replace(/<p>/g, '').replace(/<\/p>/g, '\n\n')
+                                .replace(/<br\s*[\/]?>/gi, '\n');
+
+                            markdownTotal += `---
+title: "${title}"
+date: "${date}"
+slug: "${slug}"
+---
+
+# ${title}
+
+${cleanContent}
+
+\n\n========================================\n\n`;
+                            count++;
+                        }
+                    }
+
+                    outputPre.textContent = markdownTotal;
+                    statusDiv.innerText = `Conversão concluída com sucesso! ${count} artigos convertidos.`;
+
+                } catch (err) {
+                    statusDiv.innerText = 'Erro ao processar o XML.';
+                    console.error(err);
+                }
+            };
+
+            reader.readAsText(file);
+        }
+    </script>
+
+</body>
+</html>
